@@ -83,27 +83,50 @@
 
 # PROMPT CONSTRUCTION TEST
 
-from app.services.retrieval_service import RetrievalService
-from app.services.prompt_service import PromptService
+# from app.services.retrieval_service import RetrievalService
+# from app.services.prompt_service import PromptService
 
 
-retriever = RetrievalService()
-prompt_service = PromptService()
+# retriever = RetrievalService()
+# prompt_service = PromptService()
 
 
-question = "Where is authentication implemented?"
+# question = "Where is authentication implemented?"
 
 
-chunks = retriever.retrieve(
-    question,
-    limit=3
+# chunks = retriever.retrieve(
+#     question,
+#     limit=3
+# )
+
+
+# prompt = prompt_service.build_prompt(
+#     question,
+#     chunks
+# )
+
+
+# print(prompt)
+
+# CHAT SERVICE TEST
+# from app.services.chat_service import ChatService
+
+# chat = ChatService()
+
+# response = chat.ask("Where is authentication implemented?")
+
+# print(response)
+
+
+
+# FULL TEST WITH LLM
+from app.services.chat_service import ChatService
+
+
+chat = ChatService()
+
+answer = chat.ask(
+    "Where is authentication implemented?"
 )
 
-
-prompt = prompt_service.build_prompt(
-    question,
-    chunks
-)
-
-
-print(prompt)
+print(answer)
