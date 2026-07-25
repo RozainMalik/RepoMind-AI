@@ -24,3 +24,6 @@ node_modules/
 
 # Logs
 *.log
+
+# Runtime repositories
+backend/repositories/

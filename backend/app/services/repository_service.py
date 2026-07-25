@@ -7,7 +7,8 @@ from app.schemas.repository import RepositoryCreate
 from git import Repo
 from app.services.chunking_service import ChunkingService
 from app.services.parser_service import ParserService
-
+from app.services.indexing_service import IndexingService
+import traceback
 class RepositoryService:
 
     def __init__(self, db: Session):
@@ -77,14 +78,19 @@ class RepositoryService:
         self.db.refresh(repository)
 
         try:
-            self.clone_repository(
-                repository.github_url,
+            self.clone_repository(repository.github_url, repository.local_path, )
+
+            indexer = IndexingService()
+
+            indexer.index_repository(
                 repository.local_path,
             )
 
             repository.status = RepositoryStatus.READY.value
 
-        except Exception:
+        except Exception as e:
+            traceback.print_exc()
+            print(f"Error: {e}")
             repository.status = RepositoryStatus.FAILED.value
 
         self.db.commit()
@@ -100,15 +106,15 @@ class RepositoryService:
         ):
             Repo.clone_from(github_url, local_path)
 
-    def process_repository(self, repository_path: str):
-        parser = ParserService()
-        chunker = ChunkingService()
+    # def process_repository(self, repository_path: str):
+    #     parser = ParserService()
+    #     chunker = ChunkingService()
 
-        files = parser.get_source_files(repository_path)
+    #     files = parser.get_source_files(repository_path)
 
-        all_chunks = []
+    #     all_chunks = []
 
-        for file in files:
-            all_chunks.extend(chunker.chunk_file(file))
+    #     for file in files:
+    #         all_chunks.extend(chunker.chunk_file(file))
 
-        return all_chunks
+    #     return all_chunks
