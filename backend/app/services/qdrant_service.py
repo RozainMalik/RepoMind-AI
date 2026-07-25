@@ -68,3 +68,13 @@ class QdrantService:
             collection_name=self.COLLECTION_NAME,
             points=points,
         )
+
+    def search(self, query_vector, limit=5):
+
+        results = self.client.query_points(
+            collection_name="code_chunks",
+            query=query_vector,
+            limit=limit
+        )
+
+        return results.points

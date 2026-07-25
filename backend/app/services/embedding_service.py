@@ -31,3 +31,9 @@ class EmbeddingService:
             )
 
         return embeddings
+
+    def embed_query(self, query):
+        return self.model.encode(
+            query,
+            normalize_embeddings=True
+        )

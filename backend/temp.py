@@ -54,11 +54,56 @@
 # print(len(vector))
 # print(vector[:10])
 
-#TESTING QDRANT
-from app.services.qdrant_service import QdrantService
+# #TESTING QDRANT
+# from app.services.qdrant_service import QdrantService
 
-service = QdrantService()
+# service = QdrantService()
 
-service.create_collection()
+# service.create_collection()
 
-print(service.client.get_collections())
+# print(service.client.get_collections())
+
+
+# # RETREIVAL TEST
+# from app.services.retrieval_service import RetrievalService
+
+
+# retriever = RetrievalService()
+
+
+# results = retriever.retrieve(
+#     "Where are the content of .env file?"
+# )
+
+
+# for result in results:
+#     print("\n")
+#     print(result.payload["file_path"])
+#     print(result.score)
+
+# PROMPT CONSTRUCTION TEST
+
+from app.services.retrieval_service import RetrievalService
+from app.services.prompt_service import PromptService
+
+
+retriever = RetrievalService()
+prompt_service = PromptService()
+
+
+question = "Where is authentication implemented?"
+
+
+chunks = retriever.retrieve(
+    question,
+    limit=3
+)
+
+
+prompt = prompt_service.build_prompt(
+    question,
+    chunks
+)
+
+
+print(prompt)
