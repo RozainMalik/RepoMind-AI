@@ -84,6 +84,7 @@ class RepositoryService:
 
             indexer.index_repository(
                 repository.local_path,
+                repository.id,
             )
 
             repository.status = RepositoryStatus.READY.value

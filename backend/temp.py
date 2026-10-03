@@ -121,12 +121,53 @@
 
 # FULL TEST WITH LLM
 from app.services.chat_service import ChatService
+from rich.console import Console
+from rich.panel import Panel
+from rich.markdown import Markdown
+from rich.table import Table
 
+
+console = Console()
 
 chat = ChatService()
 
-answer = chat.ask(
+response = chat.ask(
     "Where is authentication implemented?"
 )
 
-print(answer)
+
+# Answer panel
+console.print(
+    Panel(
+        Markdown(response["answer"]),
+        title="🤖 RepoMind AI",
+        border_style="cyan"
+    )
+)
+
+
+# Sources table
+table = Table(
+    title="📚 Sources",
+    show_header=True,
+    header_style="bold magenta"
+)
+
+
+table.add_column("#", justify="center")
+table.add_column("File")
+table.add_column("Lines")
+table.add_column("Score")
+
+
+for i, source in enumerate(response["sources"], start=1):
+
+    table.add_row(
+        str(i),
+        source["file_path"].split("/repositories/")[-1],
+        f'{source["start_line"]}-{source["end_line"]}',
+        f'{source["score"]:.3f}'
+    )
+
+
+console.print(table)

@@ -3,6 +3,9 @@ from qdrant_client.models import (
     Distance,
     VectorParams,
     PointStruct,
+    Filter,
+    FieldCondition,
+    MatchValue,
 )
 from uuid import uuid4
 from app.schemas.chunk import CodeChunk
@@ -36,6 +39,20 @@ class QdrantService:
             ),
         )
 
+    def recreate_collection(self):
+        collections = self.client.get_collections()
+        existing = [
+            collection.name
+            for collection in collections.collections
+        ]
+
+        if self.COLLECTION_NAME in existing:
+            self.client.delete_collection(
+                collection_name=self.COLLECTION_NAME
+            )
+
+        self.create_collection()
+
     def store_chunks(
         self,
         chunks: list[CodeChunk],
@@ -53,6 +70,7 @@ class QdrantService:
                 id=str(uuid4()),
                 vector=embedding,
                 payload={
+                    "repository_id": chunk.repository_id,
                     "file_path": chunk.file_path,
                     "content": chunk.content,
                     "language": chunk.language,
@@ -69,11 +87,20 @@ class QdrantService:
             points=points,
         )
 
-    def search(self, query_vector, limit=5):
+    def search(self, query_vector, repository_id: int, limit=5):
 
         results = self.client.query_points(
+            
             collection_name="code_chunks",
             query=query_vector,
+            query_filter=Filter(
+                must=[
+                    FieldCondition(
+                        key="repository_id",
+                        match=MatchValue(value=repository_id),
+                    )
+                ]
+            ),
             limit=limit
         )
 

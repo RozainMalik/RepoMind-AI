@@ -27,6 +27,5 @@ class LLMService:
                 }
             ]
         )
-
-
+        
         return response["message"]["content"]

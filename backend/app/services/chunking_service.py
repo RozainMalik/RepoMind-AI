@@ -32,13 +32,20 @@ class ChunkingService:
     def detect_language(self, file_path: Path) -> str:
         return self.LANGUAGE_MAP.get(file_path.suffix.lower(), "text")
 
-    def chunk_file(self, file_path: Path) -> list[CodeChunk]:
+    def chunk_file(
+        self,
+        file_path: Path,
+        repository_path: Path,
+        repository_id: int,
+    ) -> list[CodeChunk]:
+
         content = file_path.read_text(
             encoding="utf-8",
             errors="ignore",
         )
+
         lines = content.splitlines()
-        
+
         chunks = []
         step = self.CHUNK_SIZE - self.CHUNK_OVERLAP
 
@@ -52,7 +59,10 @@ class ChunkingService:
 
             chunks.append(
                 CodeChunk(
-                    file_path=str(file_path),
+                    repository_id=repository_id,
+                    file_path=str(
+                        file_path.relative_to(repository_path)
+                    ),
                     content="\n".join(chunk_lines),
                     chunk_index=index,
                     start_line=start + 1,
