@@ -172,15 +172,3 @@ Response:
 - **Semantic search only.** Exact identifier lookups can miss; there is no keyword or hybrid search yet.
 - **Public repositories only.** Private repositories are not supported.
 
-## Roadmap
-
-- Background indexing with a job queue and progress reporting
-- Conversation history in prompts for follow-up questions
-- README prioritization and reranking for broad questions
-- Hybrid search (keyword + vector)
-- Syntax-aware chunking (functions and classes) instead of fixed line windows
-- Re-indexing on new commits
-
-## License
-
-Add a license of your choice (for example MIT) before sharing the repository publicly.
