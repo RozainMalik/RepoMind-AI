@@ -3,41 +3,41 @@ class PromptService:
     def build_prompt(
         self,
         question: str,
-        chunks
+        chunks,
     ):
+        context_blocks = []
 
-        context = ""
+        for i, chunk in enumerate(chunks, start=1):
+            payload = chunk.payload
 
-        for i, chunk in enumerate(chunks):
+            context_blocks.append(
+                f"""[Chunk {i}]
+File: {payload["file_path"]}
+Lines: {payload["start_line"]}-{payload["end_line"]}
 
-            context += f"""
---------------------
-Chunk {i+1}
+{payload["content"]}"""
+            )
 
-File:
-{chunk.payload["file_path"]}
+        context = "\n\n--------------------\n\n".join(context_blocks)
 
-Code:
-{chunk.payload["content"]}
+        prompt = f"""You answer questions about a source code repository.
 
-"""
+You are given code excerpts retrieved from the repository. They are only a small part of it.
 
-        prompt = f"""
-You are RepoMind AI, an assistant that understands software repositories.
+Rules:
+- Use ONLY the excerpts below. Do not use outside knowledge about the project.
+- Mention only file paths that appear in the excerpts, exactly as written.
+- When you point to code, give the file path and line range.
+- If the excerpts answer only part of the question, answer that part and say what is missing.
+- If the excerpts do not contain the answer, reply exactly: "I could not find this information in the retrieved code."
+- Be concise. Do not repeat the question.
 
-Answer the user's question using ONLY the provided repository context.
+Repository excerpts:
 
-If the answer cannot be found in the context, say:
-"I could not find this information in the repository."
-
-Context:
 {context}
 
-Question:
-{question}
+Question: {question}
 
-
-Answer:
-"""
+Answer:"""
 
         return prompt

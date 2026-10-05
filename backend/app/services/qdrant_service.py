@@ -6,7 +6,9 @@ from qdrant_client.models import (
     Filter,
     FieldCondition,
     MatchValue,
+    FilterSelector
 )
+
 from uuid import uuid4
 from app.schemas.chunk import CodeChunk
 
@@ -105,3 +107,18 @@ class QdrantService:
         )
 
         return results.points
+
+    def delete_repository_vectors(self, repository_id: int):
+        self.client.delete(
+            collection_name=self.COLLECTION_NAME,
+            points_selector=FilterSelector(
+                filter=Filter(
+                    must=[
+                        FieldCondition(
+                            key="repository_id",
+                            match=MatchValue(value=repository_id),
+                        )
+                    ]
+                )
+            ),
+        )
