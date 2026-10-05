@@ -1,41 +1,57 @@
 const API_URL = "http://127.0.0.1:8001/api/v1";
 
-export async function askRepository(question){
+async function request(path, options = {}) {
+    let response;
 
-    const response = await fetch(
-        `${API_URL}/chat/`,
-        {
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json"
-            },
-            body:JSON.stringify({
-                question
-            })
-        }
-    );
-    return await response.json();
-}
+    try {
+        response = await fetch(`${API_URL}${path}`, {
+            headers: { "Content-Type": "application/json" },
+            ...options,
+        });
+    } catch {
+        throw new Error(
+            "Can't reach the backend at 127.0.0.1:8001. Is uvicorn running?"
+        );
+    }
 
-export async function indexRepository(githubUrl) {
-    const response = await fetch(
-        `${API_URL}/repositories`,
-        {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                github_url: githubUrl
-            })
-        }
-    );
-
-    const data = await response.json();
+    let data = null;
+    try {
+        data = await response.json();
+    } catch {
+        // Empty body (e.g. 204 No Content) or non-JSON
+    }
 
     if (!response.ok) {
-        throw new Error(data.detail || "Failed to index repository");
+        const detail = Array.isArray(data?.detail)
+            ? data.detail.map((d) => `${d.loc?.at(-1)}: ${d.msg}`).join(", ")
+            : data?.detail;
+        throw new Error(detail || `Request failed (${response.status})`);
     }
 
     return data;
+}
+
+export function listRepositories() {
+    return request("/repositories");
+}
+
+export function indexRepository(githubUrl) {
+    return request("/repositories", {
+        method: "POST",
+        body: JSON.stringify({ github_url: githubUrl }),
+    });
+}
+
+export function deleteRepository(repositoryId) {
+    return request(`/repositories/${repositoryId}`, { method: "DELETE" });
+}
+
+export function askRepository(repositoryId, question) {
+    return request("/chat/", {
+        method: "POST",
+        body: JSON.stringify({
+            repository_id: repositoryId,
+            question,
+        }),
+    });
 }
