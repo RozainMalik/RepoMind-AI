@@ -175,12 +175,24 @@ export default function ChatView({
         <>
             <div className="flex-1 overflow-y-auto">
                 <div className="mx-auto max-w-3xl space-y-8 px-4 py-8">
-                    {!ready && (
+                    {(repository.status === "PENDING" ||
+                        repository.status === "INDEXING") && (
+                        <div className="rounded-xl border border-slate-200 p-6" aria-live="polite">
+                            <p className="font-medium">
+                                Indexing {repository.name}…
+                            </p>
+                            <p className="mt-1 text-sm text-slate-600">
+                                Cloning, chunking and embedding files. Large
+                                repositories can take a few minutes. This page
+                                updates automatically when it's ready.
+                            </p>
+                        </div>
+                    )}
+
+                    {repository.status === "FAILED" && (
                         <div className="rounded-xl border border-slate-200 p-6">
                             <p className="font-medium">
-                                {repository.status === "FAILED"
-                                    ? `Indexing ${repository.name} failed.`
-                                    : `${repository.name} isn't finished indexing.`}
+                                Indexing {repository.name} failed.
                             </p>
                             <p className="mt-1 text-sm text-slate-600">
                                 Check the backend logs for the error, then index it again.
@@ -190,7 +202,7 @@ export default function ChatView({
                                 disabled={indexing}
                                 className="mt-4 rounded-lg bg-blue-800 px-4 py-2 text-sm font-medium text-white hover:bg-blue-900 disabled:opacity-40"
                             >
-                                {indexing ? "Indexing…" : "Index again"}
+                                {indexing ? "Starting…" : "Index again"}
                             </button>
                         </div>
                     )}

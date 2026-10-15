@@ -7,3 +7,6 @@ pydantic-settings
 python-dotenv
 gitpython
 alembic
+qdrant-client
+sentence-transformers
+ollama

@@ -5,6 +5,27 @@ Ask questions about any GitHub repository and get answers with the exact files a
 <!-- Add a screenshot or GIF here: docs/screenshot.png -->
 <!-- ![RepoMind AI](docs/screenshot.png) -->
 
+```mermaid
+flowchart LR
+    subgraph Index["Indexing"]
+        A[GitHub URL] --> B[Validate + shallow clone]
+        B --> C[Parse + filter files]
+        C --> D[Chunk: 100 lines, 20 overlap]
+        D --> E[Embed: bge-small, 384-d]
+        E --> F[(Qdrant<br/>+ repository_id)]
+        B -.status.-> P[(PostgreSQL)]
+    end
+    subgraph Ask["Question answering"]
+        Q[Question] --> G[Embed query]
+        G --> H[Filtered search, top 20]
+        F --> H
+        H --> I[Drop tests/CI, keep 5]
+        I --> J[Grounded prompt]
+        J --> K[Ollama: qwen2.5-coder]
+        K --> L[Answer + file/line sources]
+    end
+```
+
 RepoMind is **not** a code-generation tool. It helps you *understand* unfamiliar code:
 
 - Where is authentication implemented?

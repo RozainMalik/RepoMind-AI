@@ -369,6 +369,18 @@ export default function App() {
         loadRepositories();
     }, [loadRepositories]);
 
+    // Indexing runs in the background on the server, so poll the list
+    // every 3s while any repository is still PENDING or INDEXING
+    const hasActiveJobs = repositories.some(
+        (r) => r.status === "PENDING" || r.status === "INDEXING"
+    );
+
+    useEffect(() => {
+        if (!hasActiveJobs) return;
+        const timer = setInterval(loadRepositories, 3000);
+        return () => clearInterval(timer);
+    }, [hasActiveJobs, loadRepositories]);
+
     function selectRepository(id) {
         setSelectedId(id);
         setSidebarOpen(false);

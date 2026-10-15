@@ -3,6 +3,7 @@ import { PlusIcon, TrashIcon } from "./icons";
 const DOT = {
     READY: "bg-emerald-500",
     PENDING: "bg-amber-500 animate-pulse",
+    INDEXING: "bg-amber-500 animate-pulse",
     FAILED: "bg-red-500",
 };
 

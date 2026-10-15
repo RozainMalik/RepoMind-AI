@@ -6,6 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     DATABASE_URL: str
     LLM_MODEL: str = "qwen2.5-coder:3b"
+    QDRANT_HOST: str = "localhost"
+    QDRANT_PORT: int = 6333
 
     model_config = SettingsConfigDict(
         env_file=".env",

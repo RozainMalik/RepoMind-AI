@@ -11,6 +11,7 @@ from qdrant_client.models import (
 
 from uuid import uuid4
 from app.schemas.chunk import CodeChunk
+from app.core.config import settings
 
 class QdrantService:
 
@@ -18,8 +19,8 @@ class QdrantService:
 
     def __init__(self):
         self.client = QdrantClient(
-            host="localhost",
-            port=6333,
+            host=settings.QDRANT_HOST,
+            port=settings.QDRANT_PORT,
         )
 
     def create_collection(self):
@@ -93,7 +94,7 @@ class QdrantService:
 
         results = self.client.query_points(
             
-            collection_name="code_chunks",
+            self.COLLECTION_NAME,
             query=query_vector,
             query_filter=Filter(
                 must=[

@@ -4,13 +4,32 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from git import Repo
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.database.session import SessionLocal
 from app.models.enums import RepositoryStatus
 from app.models.repository import Repository
 from app.schemas.repository import RepositoryCreate
 from app.services.indexing_service import IndexingService
 from app.services.qdrant_service import QdrantService
+
+
+# Statuses that mean "a background job is working on this repository"
+ACTIVE_STATUSES = {
+    RepositoryStatus.PENDING.value,
+    RepositoryStatus.INDEXING.value,
+}
+
+
+class RepositoryBusyError(Exception):
+    """Raised when an action conflicts with an indexing job in progress."""
+
+
+def remove_local_clone(local_path: str) -> None:
+    path = Path(local_path)
+    if path.exists():
+        shutil.rmtree(path)
 
 
 class RepositoryService:
@@ -23,7 +42,7 @@ class RepositoryService:
     def validate_github_url(self, github_url: str) -> tuple[str, str]:
         parsed = urlparse(github_url)
 
-        if parsed.netloc != "github.com":
+        if parsed.netloc not in {"github.com", "www.github.com"}:
             raise ValueError("Only GitHub repositories are supported.")
 
         parts = parsed.path.strip("/").split("/")
@@ -66,21 +85,22 @@ class RepositoryService:
 
     # ---------- Public API ----------
 
-    def create_repository(self, repository_data: RepositoryCreate) -> Repository:
+    def create_repository(
+        self, repository_data: RepositoryCreate
+    ) -> tuple[Repository, bool]:
+        """Returns (repository, needs_indexing).
+
+        Does NOT index. The endpoint schedules run_indexing() in the
+        background when needs_indexing is True.
+        """
         owner, repository_name = self.validate_github_url(
             str(repository_data.github_url)
         )
         github_url = self.normalize_github_url(owner, repository_name)
 
         existing = self.get_by_url(github_url)
-
         if existing:
-            if existing.status == RepositoryStatus.READY.value:
-                # Already indexed: hand it back so the frontend can use its ID
-                return existing
-
-            # FAILED, or PENDING left over from a crashed run: retry on the same record
-            return self._clone_and_index(existing)
+            return self._handle_existing(existing)
 
         repository = Repository(
             github_url=github_url,
@@ -88,12 +108,32 @@ class RepositoryService:
             local_path=self.generate_local_path(owner, repository_name),
             status=RepositoryStatus.PENDING.value,
         )
-
         self.db.add(repository)
+
+        try:
+            self.db.commit()
+        except IntegrityError:
+            # Another request inserted the same URL a moment earlier.
+            # The unique constraint caught it; use that row instead.
+            self.db.rollback()
+            return self._handle_existing(self.get_by_url(github_url))
+
+        self.db.refresh(repository)
+        return repository, True
+
+    def _handle_existing(self, repository: Repository) -> tuple[Repository, bool]:
+        # Already indexed, or a job is already running: don't start another
+        if (
+            repository.status == RepositoryStatus.READY.value
+            or repository.status in ACTIVE_STATUSES
+        ):
+            return repository, False
+
+        # FAILED: reset and index again on the same row
+        repository.status = RepositoryStatus.PENDING.value
         self.db.commit()
         self.db.refresh(repository)
-
-        return self._clone_and_index(repository)
+        return repository, True
 
     def list_repositories(self) -> list[Repository]:
         return (
@@ -108,28 +148,48 @@ class RepositoryService:
         if repository is None:
             return False
 
+        # Deleting mid-index would race with the background job
+        if repository.status in ACTIVE_STATUSES:
+            raise RepositoryBusyError(
+                "This repository is still being indexed. Try again when it finishes."
+            )
+
         # Delete the row LAST: if vector or folder cleanup fails,
         # the row survives and the delete can simply be retried
         QdrantService().delete_repository_vectors(repository.id)
-        self._remove_local_clone(repository.local_path)
+        remove_local_clone(repository.local_path)
 
         self.db.delete(repository)
         self.db.commit()
 
         return True
 
-    # ---------- Pipeline ----------
 
-    def _clone_and_index(self, repository: Repository) -> Repository:
-        repository.status = RepositoryStatus.PENDING.value
-        self.db.commit()
+# ---------- Background job ----------
+
+def run_indexing(repository_id: int) -> None:
+    """Clone and index one repository. Runs after the HTTP response is sent.
+
+    Opens its OWN database session: the request's session from get_db()
+    is already closed by the time this runs.
+    """
+    db = SessionLocal()
+
+    try:
+        repository = db.get(Repository, repository_id)
+        if repository is None:
+            return
+
+        repository.status = RepositoryStatus.INDEXING.value
+        db.commit()
 
         try:
             # Clean up anything left behind by a previous failed attempt
-            self._remove_local_clone(repository.local_path)
+            remove_local_clone(repository.local_path)
             QdrantService().delete_repository_vectors(repository.id)
 
-            self.clone_repository(repository.github_url, repository.local_path)
+            # depth=1: we only need the current files, not the full git history
+            Repo.clone_from(repository.github_url, repository.local_path, depth=1)
 
             IndexingService().index_repository(
                 repository.local_path,
@@ -143,16 +203,7 @@ class RepositoryService:
             print(f"Indexing failed for repository {repository.id}: {e}")
             repository.status = RepositoryStatus.FAILED.value
 
-        self.db.commit()
-        self.db.refresh(repository)
+        db.commit()
 
-        return repository
-
-    def clone_repository(self, github_url: str, local_path: str):
-        # depth=1: we only need the current files, not the full git history
-        Repo.clone_from(github_url, local_path, depth=1)
-
-    def _remove_local_clone(self, local_path: str):
-        path = Path(local_path)
-        if path.exists():
-            shutil.rmtree(path)
+    finally:
+        db.close()

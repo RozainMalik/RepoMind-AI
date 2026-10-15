@@ -8,7 +8,7 @@ engine = create_engine( # the create engine connects to the postgresql, means it
     echo=True, # This prints every SQL query to the terminal.
 )
 
-SessionLocal = sessionmaker( # represents a conversation with the database. equest gets its own session, does its work, and then closes it. ensures no interference of users, transaction isolation and smooth rollback
+SessionLocal = sessionmaker( # represents a conversation with the database. request gets its own session, does its work, and then closes it. ensures no interference of users, transaction isolation and smooth rollback
     bind=engine,
     autoflush=False,
     autocommit=False,

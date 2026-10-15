@@ -1,12 +1,38 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
-
-from app.api.v1.endpoints.repositories import router as repository_router
-from app.routes.chat import router as chat_router
-
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1.endpoints.repositories import router as repository_router
+from app.database.session import SessionLocal
+from app.models.enums import RepositoryStatus
+from app.models.repository import Repository
+from app.routes.chat import router as chat_router
 
-app = FastAPI(title="RepoMind AI")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Background jobs live inside this process, so they die on restart.
+    # Anything still PENDING/INDEXING at startup was interrupted:
+    # mark it FAILED so the user can retry instead of waiting forever.
+    db = SessionLocal()
+    try:
+        db.query(Repository).filter(
+            Repository.status.in_(
+                [RepositoryStatus.PENDING.value, RepositoryStatus.INDEXING.value]
+            )
+        ).update(
+            {Repository.status: RepositoryStatus.FAILED.value},
+            synchronize_session=False,
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    yield
+
+
+app = FastAPI(title="RepoMind AI", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

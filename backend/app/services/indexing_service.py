@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from app.services.chunking_service import ChunkingService
-from app.services.embedding_service import EmbeddingService
+from app.services.embedding_service import get_embedding_service
 from app.services.parser_service import ParserService
 from app.services.qdrant_service import QdrantService
 
@@ -10,7 +10,7 @@ class IndexingService:
     def __init__(self):
         self.parser = ParserService()
         self.chunker = ChunkingService()
-        self.embedder = EmbeddingService()
+        self.embedder = get_embedding_service()
         self.qdrant = QdrantService()
 
     def index_repository(self, repository_path: str, repository_id: int):

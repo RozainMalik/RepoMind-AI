@@ -1,11 +1,11 @@
-from app.services.embedding_service import EmbeddingService
+from app.services.embedding_service import get_embedding_service
 from app.services.qdrant_service import QdrantService
 
 
 class RetrievalService:
 
     def __init__(self):
-        self.embedder = EmbeddingService()
+        self.embedder = get_embedding_service()
         self.qdrant = QdrantService()
 
     def retrieve(
